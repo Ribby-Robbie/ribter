@@ -1,14 +1,3 @@
-from r_token import Token
-import sys
-import builtins
-
-
-class RunTimeError(builtins.RuntimeError):
-    def __init__(self, token: Token, *args):
-        super().__init__(*args)
-        self.token = token
-
-
 def isDigit(character: str) -> bool:
     """
     Determines if a character is a digit or not
@@ -65,20 +54,6 @@ def isEqual(object_a, object_b):
         return object_a == object_b
 
 
-def checkNumberOperand(token, operand):
-    if isinstance(operand, float):
-        return
-    else:
-        raise RunTimeError(token, "Operand must be a number")
-
-
-def checkMultipleNumberOperands(token, operand_left, operand_right):
-    if isinstance(operand_left, float) and isinstance(operand_right, float):
-        return
-    else:
-        raise RunTimeError(token, "Operands must be numbers")
-
-
 def stringify(object_to_string):
     if object_to_string is None:
         return "nil"
@@ -95,21 +70,3 @@ def stringify(object_to_string):
             return "false"
     else:
         return str(object_to_string)
-
-
-class Rib:
-    had_error = False
-    had_runtime_error = False
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def runtimeError(error_line, error_message):
-        Rib.had_runtime_error = True
-        print(f"{error_message} \n[line {error_line}]", file=sys.stderr)
-
-    @staticmethod
-    def report(line, where, message):
-        Rib.had_error = True
-        print(f"[line {line}] Error{where}: {message}", file=sys.stderr)

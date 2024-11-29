@@ -1,11 +1,26 @@
 from r_statement import PrintStatement, VarStatement
 from r_expression import Expression, ExpressionVisitor
 from r_statement import (Statement, StatementVisitor, ExpressionStatement, BlockStatement, IfStatement,
-                          WhileStatement, FunctionStatement, ReturnStatement)
-from r_environment import Environment
+                         WhileStatement, FunctionStatement, ReturnStatement)
+from r_environment import Environment, Rib, RunTimeError
 from r_function import Callable, RibCallable, RibFunction, Return
+from r_token import Token
 import r_utils as utils
 import time
+
+
+def checkNumberOperand(token, operand):
+    if isinstance(operand, float):
+        return
+    else:
+        raise RunTimeError(token, "Operand must be a number")
+
+
+def checkMultipleNumberOperands(token, operand_left, operand_right):
+    if isinstance(operand_left, float) and isinstance(operand_right, float):
+        return
+    else:
+        raise RunTimeError(token, "Operands must be numbers")
 
 
 class Interpreter(ExpressionVisitor, StatementVisitor):
@@ -14,6 +29,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         self.globals = Environment()
         # Holds the local scope environment
         self.environment = self.globals
+        self.locals = dict()
 
         # Defining the clock function to the name clock
         self.globals.define("clock", RibCallable("clock", 0, lambda: float(time.time())))
@@ -22,19 +38,22 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         try:
             value = self.evaluate(expression)
             print(utils.stringify(value))
-        except utils.RunTimeError as error:
-            utils.Rib.runtimeError(error.token.line, str(error))
+        except RunTimeError as error:
+            Rib.runtimeError(error.token.line, str(error))
 
     def interpret_statement(self, statements: list[Statement]):
         try:
             for statement in statements:
                 self.execute(statement)
-        except utils.RunTimeError as error:
-            utils.Rib.runtimeError(error.token.line, str(error))
+        except RunTimeError as error:
+            Rib.runtimeError(error.token.line, str(error))
 
     # Analog to evaluate, but for statements
     def execute(self, statement: Statement):
         statement.visit(self)
+
+    def resolve(self, expression: Expression, depth: int):
+        self.locals[expression] = depth
 
     def executeBlock(self, statements, environment):
         previous = self.environment
@@ -44,6 +63,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
             for statement in statements:
                 self.execute(statement)
+
         finally:
             self.environment = previous
 
@@ -106,14 +126,27 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     # Visiting the variable to call what it is set to
     def visitVariable(self, variable):
         # This gets the variable value from the dictionary of variables
-        return self.environment.get(variable.name)
+        return self.lookUpVar(variable.name, variable)
+
+    def lookUpVar(self, name: Token, expression: Expression):
+        distance = self.locals.get(expression)
+        if distance is not None:
+            return self.environment.getAt(distance, name.lexeme)
+        else:
+            return self.globals.get(name)
 
     def visitAssign(self, assign):
         """
         Assigns something to a variable
         """
         value = self.evaluate(assign.value)
-        self.environment.assign(assign.name, value)
+
+        distance = self.locals.get(assign)
+        if distance is not None:
+            self.environment.assignAt(distance, assign.name, value)
+        else:
+            self.globals.assign(assign.name, value)
+
         return value
 
     # Convert the literal tree node into a runtime value
@@ -155,7 +188,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
         if operator == "MINUS":
             # Ensures that right is a number
-            utils.checkNumberOperand(unary.operator, right)
+            checkNumberOperand(unary.operator, right)
             return -right
         elif operator == "BANG":
             return not utils.isTruthy(right)
@@ -171,13 +204,13 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         operator = binary.operator.token_type
 
         if operator == "MINUS":
-            utils.checkMultipleNumberOperands(binary.operator, left, right)
+            checkMultipleNumberOperands(binary.operator, left, right)
             return left - right
         elif operator == "STAR":
-            utils.checkMultipleNumberOperands(binary.operator, left, right)
+            checkMultipleNumberOperands(binary.operator, left, right)
             return left * right
         elif operator == "SLASH":
-            utils.checkMultipleNumberOperands(binary.operator, left, right)
+            checkMultipleNumberOperands(binary.operator, left, right)
             return left / right
         elif operator == "PLUS":
             if isinstance(left, str) and isinstance(right, str):
@@ -185,18 +218,18 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             elif isinstance(left, float) and isinstance(right, float):
                 return left + right
             else:
-                raise utils.RunTimeError(binary.operator, "Operands must be two numbers or two strings.")
+                raise RunTimeError(binary.operator, "Operands must be two numbers or two strings.")
         elif operator == "GREATER":
-            utils.checkMultipleNumberOperands(binary.operator, left, right)
+            checkMultipleNumberOperands(binary.operator, left, right)
             return left > right
         elif operator == "GREATER_EQUAL":
-            utils.checkMultipleNumberOperands(binary.operator, left, right)
+            checkMultipleNumberOperands(binary.operator, left, right)
             return left >= right
         elif operator == "LESS":
-            utils.checkMultipleNumberOperands(binary.operator, left, right)
+            checkMultipleNumberOperands(binary.operator, left, right)
             return left < right
         elif operator == "LESS_EQUAL":
-            utils.checkMultipleNumberOperands(binary.operator, left, right)
+            checkMultipleNumberOperands(binary.operator, left, right)
             return left <= right
         elif operator == "BANG_EQUAL":
             return not utils.isEqual(left, right)
@@ -209,12 +242,12 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         arguments = [self.evaluate(argument) for argument in call.arguments]
 
         if not isinstance(callee, Callable):
-            raise utils.RunTimeError(call.paren, "Can only call functions and classes")
+            raise RunTimeError(call.paren, "Can only call functions and classes")
 
         function = callee
 
         if len(arguments) != function.arity():
-            raise utils.RunTimeError(call.paren, f"Expected "
-                                                 f"{function.arity()} arguments but got {len(arguments)}.")
+            raise RunTimeError(call.paren, f"Expected "
+                                           f"{function.arity()} arguments but got {len(arguments)}.")
 
         return function.call(self, arguments)

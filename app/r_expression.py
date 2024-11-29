@@ -1,5 +1,5 @@
 import abc
-from .r_token import Token
+from r_token import Token
 
 
 class Expression(abc.ABC):

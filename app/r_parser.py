@@ -1,12 +1,8 @@
-import r_utils as utils
 from r_token import Token
 from r_expression import Literal, Unary, Grouping, Binary, Variable, Assign, Logical, Expression, Call
 from r_statement import (PrintStatement, ExpressionStatement, VarStatement, BlockStatement, IfStatement,
-                          WhileStatement, FunctionStatement, ReturnStatement)
-
-
-class ParserError(Exception):
-    pass
+                         WhileStatement, FunctionStatement, ReturnStatement)
+from r_environment import ParserError, error
 
 
 class Parser:
@@ -14,15 +10,6 @@ class Parser:
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
         self.current = 0
-
-    @staticmethod
-    def error(token, message):
-        if token.token_type == "EOF":
-            utils.Rib.report(token.line, " at end", message)
-        else:
-            utils.Rib.report(token.line, f" at '{token.lexeme}'", message)
-
-        return ParserError
 
     def parseExpression(self):
         try:
@@ -107,17 +94,15 @@ class Parser:
         else:
             initializer = self.expressionStatement()
 
+        condition = None
         if not self.match("SEMICOLON"):
             condition = self.expression()
-        else:
-            condition = None
 
         self.consume("SEMICOLON", "Expect ';' after loop condition.")
 
+        increment = None
         if not self.check("RIGHT_PAREN"):
             increment = self.expression()
-        else:
-            increment = None
 
         self.consume("RIGHT_PAREN", "Expect ')' after for conditions.")
         body = self.statement()
@@ -187,7 +172,7 @@ class Parser:
         if not self.check("RIGHT_PAREN"):
             while True:
                 if len(parameters) >= 255:
-                    self.error(self.peek(), "Can't have more than 255 parameters.")
+                    raise error(self.peek(), "Can't have more than 255 parameters.")
 
                 parameters.append(self.consume("IDENTIFIER", "Expect parameter name."))
 
@@ -220,7 +205,7 @@ class Parser:
                 name = expression.name
                 return Assign(name, value)
 
-            self.error(equals, "Invalid assignment target.")
+            raise error(equals, "Invalid assignment target.")
 
         return expression
 
@@ -331,7 +316,7 @@ class Parser:
         if self.check(token_type):
             return self.advance()
 
-        raise self.error(self.peek(), message)
+        raise error(self.peek(), message)
 
     def primary(self):
         """
@@ -361,7 +346,7 @@ class Parser:
             self.consume("RIGHT_PAREN", "Expect ')' after expression.")
             return Grouping(expression)
         else:
-            raise self.error(self.peek(), "Expect expression.")
+            raise error(self.peek(), "Expect expression.")
 
     def unary(self):
         """
@@ -388,7 +373,7 @@ class Parser:
                 arguments.append(self.expression())
 
                 if len(arguments) >= 255:
-                    self.error(self.peek(), "Can't have more than 255 arguments.")
+                    (self.peek(), "Can't have more than 255 arguments.")
 
                 if not self.match("COMMA"):
                     break

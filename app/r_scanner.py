@@ -1,4 +1,5 @@
 from r_token import Token
+from r_environment import Rib
 import r_utils as utils
 
 
@@ -22,7 +23,7 @@ class Scanner:
         :param line: the line the error is at
         :param error: the message to be appended to the error list
         """
-        utils.Rib.report(line, "", error)
+        Rib.report(line, "", error)
 
     def isAtEnd(self) -> bool:
         """

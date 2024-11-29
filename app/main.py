@@ -2,8 +2,9 @@ import sys
 from r_scanner import Scanner
 from r_parser import Parser
 from r_interpreter import Interpreter
+from r_resolver import Resolver
 from r_expression import AstPrint
-from r_utils import Rib
+from r_environment import Rib
 
 
 def tokenize(contents):
@@ -64,6 +65,13 @@ def run(contents):
         return
 
     interpreter = Interpreter()
+
+    if Rib.had_error:
+        return
+
+    resolver = Resolver(interpreter)
+    resolver.resolve(statements)
+
     interpreter.interpret_statement(statements)
 
 

@@ -1,5 +1,43 @@
 from r_token import Token
-import r_utils as utils
+import sys
+import builtins
+
+
+class RunTimeError(builtins.RuntimeError):
+    def __init__(self, token: Token, *args):
+        super().__init__(*args)
+        self.token = token
+
+
+class ParserError(Exception):
+    pass
+
+
+def error(token, message):
+    if token.token_type == "EOF":
+        Rib.report(token.line - 1, " at end", message)
+    else:
+        Rib.report(token.line, f" at '{token.lexeme}'", message)
+
+    return ParserError
+
+
+class Rib:
+    had_error = False
+    had_runtime_error = False
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def runtimeError(error_line, error_message):
+        Rib.had_runtime_error = True
+        print(f"{error_message} \n[line {error_line}]", file=sys.stderr)
+
+    @staticmethod
+    def report(line, where, message):
+        Rib.had_error = True
+        print(f"[line {line}] Error{where}: {message}", file=sys.stderr)
 
 
 class Environment:
@@ -14,6 +52,27 @@ class Environment:
     def define(self, name, value):
         self.values[name] = value
 
+    def ancestor(self, distance: int):
+        """
+        Walks a fixed number of spaces up the parent chain and returns the environment there
+        """
+        environment = self
+        i = 0
+        while i < distance:
+            environment = environment.enclosing
+            i += 1
+
+        return environment
+
+    def getAt(self, distance: int, name: str):
+        """
+        Returns the value of a variable in that specific environment's map
+        """
+        return self.ancestor(distance).values.get(name)
+
+    def assignAt(self, distance: int, name: Token, value):
+        self.ancestor(distance).values[name.lexeme] = value
+
     def get(self, name: Token):
         lexeme = name.lexeme
 
@@ -23,7 +82,7 @@ class Environment:
         if self.enclosing is not None:
             return self.enclosing.get(name)
 
-        raise utils.RunTimeError(name, f"Undefined variable '{lexeme}'.")
+        raise RunTimeError(name, f"Undefined variable '{lexeme}'.")
 
     def assign(self, name: Token, value):
         """
@@ -43,4 +102,4 @@ class Environment:
             self.enclosing.assign(name, value)
             return
 
-        raise utils.RunTimeError(name, f"Undefined variable '{lexeme}'.")
+        raise RunTimeError(name, f"Undefined variable '{lexeme}'.")
