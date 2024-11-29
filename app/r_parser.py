@@ -34,6 +34,9 @@ class Parser:
             return None
 
     def declaration(self):
+        """
+        Declaring that something is a function or variable, as well as what its statement is
+        """
         try:
             if self.match("FUN"):
                 return self.function("function")
