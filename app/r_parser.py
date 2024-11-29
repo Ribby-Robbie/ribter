@@ -12,12 +12,18 @@ class Parser:
         self.current = 0
 
     def parseExpression(self):
+        """
+        Parsing used for expressions
+        """
         try:
             return self.expression()
         except ParserError:
             return None
 
     def parseStatement(self):
+        """
+        Parsing used for statements
+        """
         try:
             statements = []
             while not self.isAtEnd():
