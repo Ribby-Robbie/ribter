@@ -2,15 +2,23 @@ from r_token import Token
 from r_expression import ExpressionVisitor, Expression, Variable, Assign, Binary, Call, Grouping, Literal, Logical, \
     Unary
 from r_statement import (StatementVisitor, BlockStatement, Statement, VarStatement, FunctionStatement,
-                         ExpressionStatement, IfStatement, PrintStatement, ReturnStatement, WhileStatement)
+                         ExpressionStatement, IfStatement, PrintStatement, ReturnStatement, WhileStatement,
+                         ClassStatement)
 from r_environment import error
 from collections import deque
+from enum import Enum
+
+
+class FunctionType(Enum):
+    NONE = 0,
+    FUNCTION = 1
 
 
 class Resolver(ExpressionVisitor, StatementVisitor):
     def __init__(self, interpreter):
         self.interpreter = interpreter
         self.scopes = deque()
+        self.current_function = FunctionType.NONE
 
     def resolve(self, statements: list[Statement]):
         """
@@ -25,6 +33,11 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self.endScope()
         return None
 
+    def visitClassStatement(self, class_: ClassStatement):
+        self.declare(class_.name)
+        self.define(class_.name)
+        return None
+
     def visitExpressionStatement(self, expression: ExpressionStatement):
         self.resolveExpression(expression.expression)
         return None
@@ -36,7 +49,7 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self.declare(function.name)
         self.define(function.name)
 
-        self.resolveFunction(function)
+        self.resolveFunction(function, FunctionType.FUNCTION)
         return None
 
     def visitIfStatement(self, if_statement: IfStatement):
@@ -52,6 +65,9 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         return None
 
     def visitReturnStatement(self, return_statement: ReturnStatement):
+        if self.current_function == FunctionType.NONE:
+            error(return_statement.keyword, "Can't return from top-level code.")
+
         if return_statement.value is not None:
             self.resolveExpression(return_statement.value)
 
@@ -144,7 +160,12 @@ class Resolver(ExpressionVisitor, StatementVisitor):
 
             index -= 1
 
-    def resolveFunction(self, function: FunctionStatement):
+    def resolveFunction(self, function: FunctionStatement, func_type: FunctionType):
+        # The enclosing function we are in is the current function
+        enclosing_function = self.current_function
+        # If there is anything else in this function, we deem if it is a function or not
+        self.current_function = func_type
+
         self.beginScope()
         for param in function.params:
             self.declare(param)
@@ -152,6 +173,9 @@ class Resolver(ExpressionVisitor, StatementVisitor):
 
         self.resolve(function.body)
         self.endScope()
+
+        # Now we are out of this enclosing function, and we are back up top
+        self.current_function = enclosing_function
 
     def resolveStatement(self, statement: Statement):
         statement.visit(self)

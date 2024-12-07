@@ -72,6 +72,9 @@ def run(contents):
     resolver = Resolver(interpreter)
     resolver.resolve(statements)
 
+    if Rib.had_error:
+        return
+
     interpreter.interpret_statement(statements)
 
 

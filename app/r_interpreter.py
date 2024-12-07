@@ -1,4 +1,5 @@
-from r_statement import PrintStatement, VarStatement
+from r_class import RibClass
+from r_statement import PrintStatement, VarStatement, ClassStatement
 from r_expression import Expression, ExpressionVisitor
 from r_statement import (Statement, StatementVisitor, ExpressionStatement, BlockStatement, IfStatement,
                          WhileStatement, FunctionStatement, ReturnStatement)
@@ -69,6 +70,14 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     def visitBlockStatement(self, block: BlockStatement):
         self.executeBlock(block.block, self.environment.inner())
+        return None
+
+    def visitClassStatement(self, class_: ClassStatement):
+        # The class itself isn't technically defined as anything yet until methods and other things are added
+        self.environment.define(class_.name.lexeme, None)
+
+        new_class = RibClass(class_.name.lexeme)
+        self.environment.assign(class_.name, new_class)
         return None
 
     # Sends the expression back into the interpreter’s visitor implementation

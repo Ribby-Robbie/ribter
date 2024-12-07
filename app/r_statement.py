@@ -83,6 +83,15 @@ class BlockStatement(Statement):
         return visitor.visitBlockStatement(self)
 
 
+class ClassStatement(Statement):
+    def __init__(self, name: Token, methods: list[FunctionStatement]):
+        self.name = name
+        self.methods = methods
+
+    def visit(self, visitor: "StatementVisitor"):
+        return visitor.visitClassStatement(self)
+
+
 class StatementVisitor:
     def visitExpressionStatement(self, expression: ExpressionStatement):
         pass
@@ -106,4 +115,7 @@ class StatementVisitor:
         pass
 
     def visitBlockStatement(self, block: BlockStatement):
+        pass
+
+    def visitClassStatement(self, class_: ClassStatement):
         pass

@@ -1,7 +1,7 @@
 from r_token import Token
 from r_expression import Literal, Unary, Grouping, Binary, Variable, Assign, Logical, Expression, Call
 from r_statement import (PrintStatement, ExpressionStatement, VarStatement, BlockStatement, IfStatement,
-                         WhileStatement, FunctionStatement, ReturnStatement)
+                         WhileStatement, FunctionStatement, ReturnStatement, ClassStatement)
 from r_environment import ParserError, error
 
 
@@ -38,7 +38,9 @@ class Parser:
         Declaring that something is a function or variable, as well as what its statement is
         """
         try:
-            if self.match("FUN"):
+            if self.match("CLASS"):
+                return self.classDeclaration()
+            elif self.match("FUN"):
                 return self.function("function")
             elif self.match("VAR"):
                 return self.varDeclaration()
@@ -47,6 +49,18 @@ class Parser:
         except ParserError:
             self.synchronize()
             return None
+
+    def classDeclaration(self):
+        name = self.consume("IDENTIFIER", "Expect class name.")
+        self.consume("LEFT_BRACE", "Expect '{' before class body.")
+
+        methods = []
+        while (not self.check("RIGHT_BRACE")) and (not self.isAtEnd()):
+            methods.append(self.function("method"))
+
+        self.consume("RIGHT_BRACE", "Expect '}' after class body.")
+
+        return ClassStatement(name, methods)
 
     def varDeclaration(self):
         """
