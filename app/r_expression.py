@@ -79,6 +79,15 @@ class Call(Expression):
         return visitor.visitCall(self)
 
 
+class Get(Expression):
+    def __init__(self, obj: Expression, name: Token):
+        self.obj = obj
+        self.name = name
+
+    def visit(self, visitor: "ExpressionVisitor"):
+        return visitor.visitGet(self)
+
+
 class Grouping(Expression):
     def __init__(self, expression: Expression):
         self.expression = expression
@@ -122,6 +131,9 @@ class ExpressionVisitor:
         pass
 
     def visitCall(self, call: Call):
+        pass
+
+    def visitGet(self, get: Get):
         pass
 
     def visitGrouping(self, grouping: Grouping):

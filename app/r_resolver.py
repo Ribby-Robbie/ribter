@@ -1,6 +1,6 @@
 from r_token import Token
 from r_expression import ExpressionVisitor, Expression, Variable, Assign, Binary, Call, Grouping, Literal, Logical, \
-    Unary
+    Unary, Get
 from r_statement import (StatementVisitor, BlockStatement, Statement, VarStatement, FunctionStatement,
                          ExpressionStatement, IfStatement, PrintStatement, ReturnStatement, WhileStatement,
                          ClassStatement)
@@ -105,6 +105,15 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         for argument in call.arguments:
             self.resolveExpression(argument)
 
+    def visitGet(self, get: Get):
+        """
+        We want to visit the get's object expression.
+        Properties are looked up dynamically, so they don't really get 'resolved'.
+        Property access happens in the interpreter.
+        """
+        self.resolveExpression(get.obj)
+        return None
+
     def visitGrouping(self, grouping: Grouping):
         self.resolveExpression(grouping.expression)
         return None
@@ -145,6 +154,11 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         scope[name.lexeme] = False
 
     def define(self, name: Token):
+        """
+        Within a certain scope, allows a specific identifier to be defined
+        :param name:
+        :return:
+        """
         if len(self.scopes) == 0:
             return
 
@@ -161,6 +175,11 @@ class Resolver(ExpressionVisitor, StatementVisitor):
             index -= 1
 
     def resolveFunction(self, function: FunctionStatement, func_type: FunctionType):
+        """
+        Goes through the steps of declaring the scope of the function, declaring and defining the parameters for the
+        function, and then resolving the body of the function.
+        This can be nested, hence the check for where we are in enclosing vs. current functions.
+        """
         # The enclosing function we are in is the current function
         enclosing_function = self.current_function
         # If there is anything else in this function, we deem if it is a function or not
@@ -178,7 +197,15 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self.current_function = enclosing_function
 
     def resolveStatement(self, statement: Statement):
+        """
+        Used to visit a statement to 'resolve' it.
+        Being used to figure out what kind of statement it is, and what it needs to do.
+        """
         statement.visit(self)
 
     def resolveExpression(self, expression: Expression):
+        """
+        Used to visit an expression to 'resolve' it. This is basically being used to figure out what kind of expression
+        it is, and what it needs to do.
+        """
         expression.visit(self)

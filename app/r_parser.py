@@ -1,5 +1,5 @@
 from r_token import Token
-from r_expression import Literal, Unary, Grouping, Binary, Variable, Assign, Logical, Expression, Call
+from r_expression import Literal, Unary, Grouping, Binary, Variable, Assign, Logical, Expression, Call, Get
 from r_statement import (PrintStatement, ExpressionStatement, VarStatement, BlockStatement, IfStatement,
                          WhileStatement, FunctionStatement, ReturnStatement, ClassStatement)
 from r_environment import ParserError, error
@@ -389,6 +389,18 @@ class Parser:
         return self.call()
 
     def finishCall(self, callee: Expression):
+        """
+        Helper method for the call function. Helps to track the arguments for a function, and ensures the correct
+        syntax is used.
+
+        Parameters
+        ----------
+        :param callee: the function caller
+
+        Returns
+        -------
+        :return Call: An instance of the call class; tells us that a function got called, and it needs to be used
+        """
         arguments = []
 
         if not self.check("RIGHT_PAREN"):
@@ -412,7 +424,12 @@ class Parser:
 
         while True:
             if self.match("LEFT_PAREN"):
+                # Looks for arguments for a function and makes sure there is an ending paren
                 expression = self.finishCall(expression)
+            elif self.match("DOT"):
+                # Want the name of the object after the dot, so we can access it
+                name = self.consume("IDENTIFIER", "Expect property name after '.'.")
+                expression = Get(expression, name)
             else:
                 break
 

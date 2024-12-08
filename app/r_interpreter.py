@@ -1,6 +1,7 @@
+from r_instance import RibInstance
 from r_class import RibClass
 from r_statement import PrintStatement, VarStatement, ClassStatement
-from r_expression import Expression, ExpressionVisitor
+from r_expression import Expression, ExpressionVisitor, Get
 from r_statement import (Statement, StatementVisitor, ExpressionStatement, BlockStatement, IfStatement,
                          WhileStatement, FunctionStatement, ReturnStatement)
 from r_environment import Environment, Rib, RunTimeError
@@ -260,3 +261,14 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
                                            f"{function.arity()} arguments but got {len(arguments)}.")
 
         return function.call(self, arguments)
+
+    def visitGet(self, get: Get):
+        # Want to evaluate what the object of the get is
+        obj = self.evaluate(get.obj)
+
+        if isinstance(obj, RibInstance):
+            return obj.class_.name
+
+        # In this case, user tried to .get on something other than an instance like a number, for example
+        raise RunTimeError(get.name, "Only instances have properties.")
+
